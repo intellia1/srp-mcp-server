@@ -1,0 +1,50 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Task {
+  id          String   @id @default(uuid())
+  taskId      String   @unique @map("task_id") // Formato: session_YYYYMMDD_NNN
+  agentId     String   @map("agent_id")
+  title       String
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  status      String   @default("pending") // pending, in_progress, completed, blocked
+  
+  // Relación con notas
+  notes       Note[]
+  
+  @@map("tasks")
+}
+
+model Note {
+  id            String   @id @default(uuid())
+  noteId        String   @unique @map("note_id") // Formato: note_YYYYMMDD_NNN
+  agentId       String   @map("agent_id")
+  taskId        String   @map("task_id") // Referencia a Task
+  subtaskId     String?  @map("subtask_id") // Formato: subtask_YYYYMMDD_NNN
+  timestamp     DateTime @default(now())
+  taskTitle     String   @map("task_title")
+  subtaskTitle  String?  @map("subtask_title")
+  content       String
+  subtaskStatus String   @default("pending") @map("subtask_status") // pending, in_progress, completed, blocked
+  publicState   Boolean  @default(true) @map("public_state")
+  metadata      Json?    // Campo JSON para datos adicionales
+  
+  // Relación con Task
+  task          Task     @relation(fields: [taskId], references: [taskId])
+  
+  @@map("notes")
+  @@index([taskId])
+  @@index([agentId])
+  @@index([subtaskId])
+  @@index([timestamp])
+}
