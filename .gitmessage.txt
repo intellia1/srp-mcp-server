@@ -1,0 +1,7 @@
+[TYPE]: breve resumen (imperativo, ≤72 chars)  
+[CONTEXT]: ¿qué problema resuelve?  
+[SCOPE]: módulo/área afectada  
+[DETAILS]: puntos clave del cambio, riesgos, testing  
+
+Co-authored-by: ${AGENT_NAME} <${AGENT_EMAIL}>  
+Signed-off-by: Renzo Colman <rcolman@intelia.online>
