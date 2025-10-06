@@ -1,4 +1,4 @@
-import { PreCompactionHook, HookExecutionContext, HookResult, CompactableContent } from '../types/hook.types';
+import { PreCompactionHook, HookExecutionContext, HookResult, CompactableContent } from '../types/hook.types.js';
 import Logger from '../utils/logger.js';
 
 export class PreCompactionNotifier implements PreCompactionHook {
@@ -46,12 +46,12 @@ export class PreCompactionNotifier implements PreCompactionHook {
       };
     } catch (error) {
       Logger.error('Error in pre-compaction hook', { error });
-      
+
       return {
         status: 'error',
         preservedContent: [],
         removedContent: [],
-        message: `Error during pre-compaction analysis: ${error.message}`
+        message: `Error during pre-compaction analysis: ${error instanceof Error ? error.message : 'Unknown error'}`
       };
     }
   }

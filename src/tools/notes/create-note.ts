@@ -1,6 +1,4 @@
 import { z } from 'zod';
-import { parseNote, validateNote } from '../../utils/validators.js';
-import { generateNoteId } from '../../utils/id-generator.js';
 import Logger from '../../utils/logger.js';
 import { NoteRepository } from '../../storage/repositories/note.repository.js';
 
@@ -31,24 +29,7 @@ export const createNoteTool = {
       
       // Validar los parámetros de entrada
       const inputData = createNoteTool.inputSchema.parse(params);
-      
-      // Crear el objeto de nota con los campos requeridos
-      const noteData = {
-        note_id: generateNoteId(),
-        timestamp: new Date().toISOString(),
-        ...inputData
-      };
-      
-      // Validar la estructura de la nota
-      if (!validateNote(noteData)) {
-        return {
-          content: [{
-            type: 'text',
-            text: 'Error: La nota no cumple con el formato SRP requerido'
-          }]
-        };
-      }
-      
+
       // Si tenemos un repositorio disponible, usarlo para guardar la nota
       if (noteRepository) {
         try {
@@ -64,10 +45,10 @@ export const createNoteTool = {
           });
           
           Logger.info('Note saved to database', { noteId: savedNote.note_id });
-          
+
           return {
             content: [{
-              type: 'text',
+              type: 'text' as const,
               text: JSON.stringify({
                 success: true,
                 note_id: savedNote.note_id,
@@ -77,35 +58,36 @@ export const createNoteTool = {
           };
         } catch (dbError: any) {
           Logger.error('Error saving note to database', { error: dbError.message });
-          
+
           return {
             content: [{
-              type: 'text',
+              type: 'text' as const,
               text: `Error al guardar la nota en la base de datos: ${dbError.message}`
             }]
           };
         }
-      } else {
-        // Si no hay repositorio, usar la lógica simulada
-        Logger.info('Note created (simulated)', { noteId: noteData.note_id });
-        
-        return {
-          content: [{
-            type: 'text',
-            text: JSON.stringify({
-              success: true,
-              note_id: noteData.note_id,
-              message: 'Nota creada exitosamente en el sistema SRP (almacenamiento simulado)'
-            }, null, 2)
-          }]
-        };
       }
-    } catch (error: any) {
-      Logger.error('Error creating note', { error: error.message, params });
-      
+
+      // Fallback: mock mode when no repository is configured
+      const noteId = `note_${Date.now()}_${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+      Logger.warn('No repository configured - returning mock data', { noteId });
+
       return {
         content: [{
-          type: 'text',
+          type: 'text' as const,
+          text: JSON.stringify({
+            success: true,
+            note_id: noteId,
+            message: 'Nota creada exitosamente en el sistema SRP (almacenamiento simulado)'
+          }, null, 2)
+        }]
+      };
+    } catch (error: any) {
+      Logger.error('Error creating note', { error: error.message, params });
+
+      return {
+        content: [{
+          type: 'text' as const,
           text: `Error al crear la nota: ${error.message}`
         }]
       };

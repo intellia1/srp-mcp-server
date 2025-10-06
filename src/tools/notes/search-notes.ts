@@ -1,5 +1,13 @@
 import { z } from 'zod';
 import Logger from '../../utils/logger.js';
+import { NoteRepository } from '../../storage/repositories/note.repository.js';
+
+// Repository injection
+let noteRepository: NoteRepository | undefined;
+
+export const setNoteRepository = (repository: NoteRepository) => {
+  noteRepository = repository;
+};
 
 // Definición de la herramienta para buscar notas
 export const searchNotesTool = {
@@ -16,12 +24,58 @@ export const searchNotesTool = {
   handler: async (params: any) => {
     try {
       Logger.debug('Searching notes', { params });
-      
+
       // Validar los parámetros de entrada
       const inputData = searchNotesTool.inputSchema.parse(params);
-      
-      // Aquí iría la lógica para buscar notas en la base de datos
-      // Por ahora, simulamos resultados de búsqueda
+
+      // Database logic using repository
+      if (noteRepository) {
+        try {
+          const notes = await noteRepository.search({
+            query: inputData.query,
+            task_id: inputData.task_id,
+            subtask_id: inputData.subtask_id,
+            agent_id: inputData.agent_id,
+            limit: inputData.limit,
+            offset: inputData.offset
+          });
+
+          Logger.info('Notes searched successfully from database', {
+            query: inputData.query,
+            taskId: inputData.task_id,
+            count: notes.length
+          });
+
+          return {
+            content: [{
+              type: 'text' as const,
+              text: JSON.stringify({
+                success: true,
+                query: inputData.query,
+                task_id: inputData.task_id,
+                subtask_id: inputData.subtask_id,
+                agent_id: inputData.agent_id,
+                notes: notes,
+                count: notes.length,
+                limit: inputData.limit,
+                offset: inputData.offset
+              }, null, 2)
+            }]
+          };
+        } catch (dbError: any) {
+          Logger.error('Error from database', { error: dbError.message });
+          return {
+            content: [{
+              type: 'text' as const,
+              text: `Error al buscar las notas en la base de datos: ${dbError.message}`
+            }]
+          };
+        }
+      }
+
+      // Fallback: mock data when repository is not configured
+      Logger.warn('No repository configured - returning mock data');
+
       const mockNotes = [
         {
           note_id: 'note_20251005_001',
@@ -36,16 +90,16 @@ export const searchNotesTool = {
           public_state: true
         }
       ];
-      
-      Logger.info('Notes searched successfully', { 
-        query: inputData.query, 
-        taskId: inputData.task_id, 
-        count: mockNotes.length 
+
+      Logger.info('Notes searched successfully (mock)', {
+        query: inputData.query,
+        taskId: inputData.task_id,
+        count: mockNotes.length
       });
-      
+
       return {
         content: [{
-          type: 'text',
+          type: 'text' as const,
           text: JSON.stringify({
             success: true,
             query: inputData.query,
@@ -61,10 +115,10 @@ export const searchNotesTool = {
       };
     } catch (error: any) {
       Logger.error('Error searching notes', { error: error.message, params });
-      
+
       return {
         content: [{
-          type: 'text',
+          type: 'text' as const,
           text: `Error al buscar las notas: ${error.message}`
         }]
       };

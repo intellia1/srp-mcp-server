@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { NoteSchema, TaskSchema } from '../types/note.types';
+import { NoteSchema, TaskSchema } from '../types/note.types.js';
 
 /**
  * Valida una nota estructurada según el formato SRP

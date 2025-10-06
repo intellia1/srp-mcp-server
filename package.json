@@ -2,6 +2,7 @@
   "name": "srp-mcp-server",
   "version": "1.0.0",
   "description": "Synaptic Retention Protocol (SRP) - Model Context Protocol Server",
+  "type": "module",
   "main": "dist/index.js",
   "scripts": {
     "start": "node dist/index.js",

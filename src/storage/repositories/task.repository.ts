@@ -1,6 +1,6 @@
 import { PrismaClient, Task as PrismaTask } from '@prisma/client';
-import { Task } from '../types/task.types';
-import Logger from '../utils/logger.js';
+import { Task } from '../../types/task.types.js';
+import Logger from '../../utils/logger.js';
 
 // Mapeo entre el tipo SRP y el modelo de Prisma
 const mapPrismaTaskToTask = (prismaTask: PrismaTask): Task => {
@@ -11,7 +11,8 @@ const mapPrismaTaskToTask = (prismaTask: PrismaTask): Task => {
     description: prismaTask.description || undefined,
     created_at: prismaTask.createdAt.toISOString(),
     updated_at: prismaTask.updatedAt.toISOString(),
-    status: prismaTask.status as Task['status']
+    status: prismaTask.status as Task['status'],
+    notes: [] // Por defecto vacío, se puede cargar con include en Prisma si es necesario
   };
 };
 

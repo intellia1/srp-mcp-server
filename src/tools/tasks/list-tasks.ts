@@ -1,5 +1,13 @@
 import { z } from 'zod';
 import Logger from '../../utils/logger.js';
+import { TaskRepository } from '../../storage/repositories/task.repository.js';
+
+// Repository injection
+let taskRepository: TaskRepository | undefined;
+
+export const setTaskRepository = (repository: TaskRepository) => {
+  taskRepository = repository;
+};
 
 // Definición de la herramienta para listar tareas
 export const listTasksTool = {
@@ -14,12 +22,54 @@ export const listTasksTool = {
   handler: async (params: any) => {
     try {
       Logger.debug('Listing tasks', { params });
-      
+
       // Validar los parámetros de entrada
       const inputData = listTasksTool.inputSchema.parse(params);
-      
-      // Aquí iría la lógica para recuperar las tareas de la base de datos
-      // Por ahora, simulamos una lista de tareas
+
+      // Database logic using repository
+      if (taskRepository) {
+        try {
+          const tasks = await taskRepository.search({
+            agent_id: inputData.agent_id,
+            status: inputData.status,
+            limit: inputData.limit,
+            offset: inputData.offset
+          });
+
+          Logger.info('Tasks listed successfully from database', {
+            agentId: inputData.agent_id,
+            status: inputData.status,
+            count: tasks.length
+          });
+
+          return {
+            content: [{
+              type: 'text' as const,
+              text: JSON.stringify({
+                success: true,
+                agent_id: inputData.agent_id,
+                status: inputData.status,
+                tasks: tasks,
+                count: tasks.length,
+                limit: inputData.limit,
+                offset: inputData.offset
+              }, null, 2)
+            }]
+          };
+        } catch (dbError: any) {
+          Logger.error('Error from database', { error: dbError.message });
+          return {
+            content: [{
+              type: 'text' as const,
+              text: `Error al listar las tareas de la base de datos: ${dbError.message}`
+            }]
+          };
+        }
+      }
+
+      // Fallback: mock data when repository is not configured
+      Logger.warn('No repository configured - returning mock data');
+
       const mockTasks = [
         {
           task_id: 'session_20251005_001',
@@ -40,16 +90,16 @@ export const listTasksTool = {
           status: inputData.status || 'pending'
         }
       ];
-      
-      Logger.info('Tasks listed successfully', { 
-        agentId: inputData.agent_id, 
-        status: inputData.status, 
-        count: mockTasks.length 
+
+      Logger.info('Tasks listed successfully (mock)', {
+        agentId: inputData.agent_id,
+        status: inputData.status,
+        count: mockTasks.length
       });
-      
+
       return {
         content: [{
-          type: 'text',
+          type: 'text' as const,
           text: JSON.stringify({
             success: true,
             agent_id: inputData.agent_id,
@@ -63,10 +113,10 @@ export const listTasksTool = {
       };
     } catch (error: any) {
       Logger.error('Error listing tasks', { error: error.message, params });
-      
+
       return {
         content: [{
-          type: 'text',
+          type: 'text' as const,
           text: `Error al listar las tareas: ${error.message}`
         }]
       };

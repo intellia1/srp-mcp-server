@@ -25,7 +25,22 @@ async function main(): Promise<void> {
 }
 
 // Solo ejecutar main si este archivo es el módulo principal
-if (require.main === module) {
+// En ES modules, usamos import.meta.url
+// Para Windows, necesitamos normalizar las rutas
+const isMainModule = () => {
+  const scriptPath = process.argv[1];
+  if (!scriptPath) return false;
+
+  // Normalizar ambas rutas a formato URL
+  const normalizedArgv = scriptPath.replace(/\\/g, '/');
+  const normalizedMeta = import.meta.url.replace(/\\/g, '/');
+
+  return normalizedMeta.endsWith(normalizedArgv) ||
+         normalizedMeta === `file:///${normalizedArgv}` ||
+         normalizedMeta === `file://${normalizedArgv}`;
+};
+
+if (isMainModule()) {
   main();
 }
 

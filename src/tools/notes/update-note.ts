@@ -1,5 +1,13 @@
 import { z } from 'zod';
 import Logger from '../../utils/logger.js';
+import { NoteRepository } from '../../storage/repositories/note.repository.js';
+
+// Repository injection
+let noteRepository: NoteRepository | undefined;
+
+export const setNoteRepository = (repository: NoteRepository) => {
+  noteRepository = repository;
+};
 
 // Definición de la herramienta para actualizar el estado de una nota
 export const updateNoteStatusTool = {
@@ -13,14 +21,60 @@ export const updateNoteStatusTool = {
   handler: async (params: any) => {
     try {
       Logger.debug('Updating note status', { params });
-      
+
       // Validar los parámetros de entrada
       const inputData = updateNoteStatusTool.inputSchema.parse(params);
-      
-      // Aquí iría la lógica para actualizar la nota en la base de datos
-      // Por ahora, simulamos que se actualizó correctamente
-      
-      // Simulamos obtener la nota existente
+
+      // Database logic using repository
+      if (noteRepository) {
+        try {
+          const updatedNote = await noteRepository.updateStatus(
+            inputData.note_id,
+            inputData.subtask_status
+          );
+
+          if (!updatedNote) {
+            Logger.warn('Note not found for update', { noteId: inputData.note_id });
+            return {
+              content: [{
+                type: 'text' as const,
+                text: JSON.stringify({
+                  success: false,
+                  message: `Nota no encontrada: ${inputData.note_id}`
+                }, null, 2)
+              }]
+            };
+          }
+
+          Logger.info('Note status updated successfully from database', {
+            noteId: inputData.note_id,
+            newStatus: inputData.subtask_status
+          });
+
+          return {
+            content: [{
+              type: 'text' as const,
+              text: JSON.stringify({
+                success: true,
+                note: updatedNote,
+                message: `Estado de subtarea actualizado a: ${inputData.subtask_status}`
+              }, null, 2)
+            }]
+          };
+        } catch (dbError: any) {
+          Logger.error('Error from database', { error: dbError.message });
+          return {
+            content: [{
+              type: 'text' as const,
+              text: `Error al actualizar el estado de la nota en la base de datos: ${dbError.message}`
+            }]
+          };
+        }
+      }
+
+      // Fallback: mock data when repository is not configured
+      Logger.warn('No repository configured - returning mock data');
+
       const mockNote = {
         note_id: inputData.note_id,
         agent_id: inputData.agent_id,
@@ -33,15 +87,15 @@ export const updateNoteStatusTool = {
         subtask_status: inputData.subtask_status,
         public_state: true
       };
-      
-      Logger.info('Note status updated successfully', { 
-        noteId: inputData.note_id, 
-        newStatus: inputData.subtask_status 
+
+      Logger.info('Note status updated successfully (mock)', {
+        noteId: inputData.note_id,
+        newStatus: inputData.subtask_status
       });
-      
+
       return {
         content: [{
-          type: 'text',
+          type: 'text' as const,
           text: JSON.stringify({
             success: true,
             note: mockNote,
@@ -51,10 +105,10 @@ export const updateNoteStatusTool = {
       };
     } catch (error: any) {
       Logger.error('Error updating note status', { error: error.message, params });
-      
+
       return {
         content: [{
-          type: 'text',
+          type: 'text' as const,
           text: `Error al actualizar el estado de la nota: ${error.message}`
         }]
       };

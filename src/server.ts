@@ -42,28 +42,40 @@ export class SrpMcpServer {
     try {
       // Inicializar la base de datos
       if (this.config.database) {
+        Logger.info('Initializing database connection...', {
+          url: this.config.database.url.replace(/:[^:@]*@/, ':***@')
+        });
+
         this.databaseService = new DatabaseService(this.config.database);
         await this.databaseService.initialize();
-        
+
+        Logger.info('Database connection established successfully');
+
         // Pasar instancias de repositorios a las herramientas
         const prisma = this.databaseService.getClient();
         const noteRepository = new PrismaNoteRepository(prisma);
         const taskRepository = new PrismaTaskRepository(prisma);
-        
+
         // Registrar todas las herramientas con acceso a los repositorios
         registerTools(this.server, { noteRepository, taskRepository });
+        Logger.info('All tools registered with database repositories');
       } else {
         // Registrar herramientas sin persistencia (solo para pruebas)
+        Logger.warn('Starting without database - tools will not persist data');
         registerTools(this.server);
       }
-      
+
       // Conectar el transporte
+      Logger.info('Connecting to stdio transport...');
       const transport = new StdioServerTransport();
       await this.server.connect(transport);
-      
-      Logger.info('SRP-MCP Server started and connected to transport');
+
+      Logger.info('SRP-MCP Server started and connected to transport successfully');
     } catch (error) {
-      Logger.error('Failed to start SRP-MCP Server', { error });
+      Logger.error('Failed to start SRP-MCP Server', {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
       throw error;
     }
   }

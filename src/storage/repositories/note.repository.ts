@@ -1,6 +1,6 @@
 import { PrismaClient, Note as PrismaNote } from '@prisma/client';
-import { Note } from '../types/note.types';
-import Logger from '../utils/logger.js';
+import { Note } from '../../types/note.types.js';
+import Logger from '../../utils/logger.js';
 
 // Mapeo entre el tipo SRP y el modelo de Prisma
 const mapPrismaNoteToNote = (prismaNote: PrismaNote): Note => {

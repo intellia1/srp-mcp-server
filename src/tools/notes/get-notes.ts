@@ -1,5 +1,13 @@
 import { z } from 'zod';
 import Logger from '../../utils/logger.js';
+import { NoteRepository } from '../../storage/repositories/note.repository.js';
+
+// Repository injection
+let noteRepository: NoteRepository | undefined;
+
+export const setNoteRepository = (repository: NoteRepository) => {
+  noteRepository = repository;
+};
 
 // Definición de la herramienta para obtener notas por tarea
 export const getNotesByTaskTool = {
@@ -12,12 +20,40 @@ export const getNotesByTaskTool = {
   handler: async (params: any) => {
     try {
       Logger.debug('Getting notes by task', { params });
-      
+
       // Validar los parámetros de entrada
       const inputData = getNotesByTaskTool.inputSchema.parse(params);
-      
-      // Aquí iría la lógica para recuperar las notas de la base de datos
-      // Por ahora, simulamos notas de ejemplo
+
+      // Use real repository if available
+      if (noteRepository) {
+        try {
+          const notes = await noteRepository.findByTask(inputData.task_id, inputData.agent_id);
+
+          Logger.info('Notes retrieved from database', { taskId: inputData.task_id, count: notes.length });
+
+          return {
+            content: [{
+              type: 'text' as const,
+              text: JSON.stringify({
+                success: true,
+                task_id: inputData.task_id,
+                notes,
+                count: notes.length
+              }, null, 2)
+            }]
+          };
+        } catch (dbError: any) {
+          Logger.error('Error fetching notes from database', { error: dbError.message });
+          return {
+            content: [{
+              type: 'text' as const,
+              text: `Error al obtener notas de la base de datos: ${dbError.message}`
+            }]
+          };
+        }
+      }
+
+      // Fallback to mock mode if no repository
       const mockNotes = [
         {
           note_id: 'note_20251005_001',
@@ -32,12 +68,12 @@ export const getNotesByTaskTool = {
           public_state: true
         }
       ];
-      
-      Logger.info('Notes retrieved successfully', { taskId: inputData.task_id, count: mockNotes.length });
-      
+
+      Logger.warn('No repository configured - returning mock data');
+
       return {
         content: [{
-          type: 'text',
+          type: 'text' as const,
           text: JSON.stringify({
             success: true,
             task_id: inputData.task_id,
@@ -48,10 +84,10 @@ export const getNotesByTaskTool = {
       };
     } catch (error: any) {
       Logger.error('Error getting notes by task', { error: error.message, params });
-      
+
       return {
         content: [{
-          type: 'text',
+          type: 'text' as const,
           text: `Error al obtener las notas: ${error.message}`
         }]
       };

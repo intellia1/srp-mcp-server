@@ -59,7 +59,8 @@ export class Logger {
       message,
       ...(meta && { meta })
     };
-    console.log(JSON.stringify(logEntry));
+    // CRITICAL: Use stderr to avoid contaminating MCP JSON-RPC stdout channel
+    console.error(JSON.stringify(logEntry));
   }
 }
 

@@ -1,5 +1,13 @@
 import { z } from 'zod';
 import Logger from '../../utils/logger.js';
+import { TaskRepository } from '../../storage/repositories/task.repository.js';
+
+// Repository injection
+let taskRepository: TaskRepository | undefined;
+
+export const setTaskRepository = (repository: TaskRepository) => {
+  taskRepository = repository;
+};
 
 // Definición de la herramienta para obtener una tarea
 export const getTaskTool = {
@@ -12,12 +20,56 @@ export const getTaskTool = {
   handler: async (params: any) => {
     try {
       Logger.debug('Getting task', { params });
-      
+
       // Validar los parámetros de entrada
       const inputData = getTaskTool.inputSchema.parse(params);
-      
-      // Aquí iría la lógica para recuperar la tarea y sus notas de la base de datos
-      // Por ahora, simulamos una tarea con notas
+
+      // Database logic using repository
+      if (taskRepository) {
+        try {
+          const task = await taskRepository.findById(
+            inputData.task_id,
+            inputData.agent_id
+          );
+
+          if (!task) {
+            Logger.warn('Task not found', { taskId: inputData.task_id });
+            return {
+              content: [{
+                type: 'text' as const,
+                text: JSON.stringify({
+                  success: false,
+                  message: `Tarea no encontrada: ${inputData.task_id}`
+                }, null, 2)
+              }]
+            };
+          }
+
+          Logger.info('Task retrieved successfully from database', { taskId: inputData.task_id });
+
+          return {
+            content: [{
+              type: 'text' as const,
+              text: JSON.stringify({
+                success: true,
+                task: task
+              }, null, 2)
+            }]
+          };
+        } catch (dbError: any) {
+          Logger.error('Error from database', { error: dbError.message });
+          return {
+            content: [{
+              type: 'text' as const,
+              text: `Error al obtener la tarea de la base de datos: ${dbError.message}`
+            }]
+          };
+        }
+      }
+
+      // Fallback: mock data when repository is not configured
+      Logger.warn('No repository configured - returning mock data');
+
       const mockTask = {
         task_id: inputData.task_id,
         agent_id: inputData.agent_id || 'mock-agent',
@@ -41,12 +93,12 @@ export const getTaskTool = {
           }
         ]
       };
-      
-      Logger.info('Task retrieved successfully', { taskId: inputData.task_id });
-      
+
+      Logger.info('Task retrieved successfully (mock)', { taskId: inputData.task_id });
+
       return {
         content: [{
-          type: 'text',
+          type: 'text' as const,
           text: JSON.stringify({
             success: true,
             task: mockTask
@@ -55,10 +107,10 @@ export const getTaskTool = {
       };
     } catch (error: any) {
       Logger.error('Error getting task', { error: error.message, params });
-      
+
       return {
         content: [{
-          type: 'text',
+          type: 'text' as const,
           text: `Error al obtener la tarea: ${error.message}`
         }]
       };
